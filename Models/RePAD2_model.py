@@ -117,7 +117,6 @@ def write_result(timestamp, T, actual_value, predicted_value, AARE, Thd, write_a
 	print(f'T: {T}, Real Value: {actual_value}, Prediction Value: {predicted_value}, AARE: {AARE}, Thd: {Thd}')
 
 ### REPAD2 Algorithm ###
-
 """
 THE PLAN
 
@@ -128,8 +127,8 @@ It therefore processes a batch of 3 from the earliest timestamp in the range, an
 by incrementing the start time by a set time to both avoid duplicate events and to eventually catch up to the present time.
 
 The program will run indefinitely, and will continue to fetch data from the InfluxDB and process it in batches of 3 until the program is stopped.
-I there are not enough events for a batch, the program will wait for a set time before trying again.
-When a batch of three is available it will be processed and the it will again wait for another event to be available.
+If there are not enough events for a batch, the program will wait for a set time before trying again.
+When a batch of three is available it will be processed and it will again wait for another event to be available.
 
 This way it is both flexible and efficient, and can be easily used to process either data in real-time or historical data
 
