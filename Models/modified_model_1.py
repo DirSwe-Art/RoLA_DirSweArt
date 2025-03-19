@@ -34,7 +34,7 @@ username = "influx-admin"
 password = "ThisIsNotThePasswordYouAreLookingFor"
 org = "ORG"
 bucket = "system_state"
-measurement = "multivariate_dataset"
+measurement = "measurement"
 
 # Instantiate the QueryAPI
 client = InfluxDBClient(url=influxdb_url, token=token, org=org, username=username, password=password)
