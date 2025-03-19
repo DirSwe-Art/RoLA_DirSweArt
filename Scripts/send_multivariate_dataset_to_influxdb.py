@@ -62,13 +62,13 @@ def send_csv_data(producer, topic, file_path):
 		csv_reader = csv.DictReader(file)  									# Read CSV into dictionary format
 		
 		for row in csv_reader:
-			timestamp = row.pop('TimeStamp')  									# Extract timestamp
+			timestamp = row.pop('TimeStamp')  								# Extract timestamp
 			data_dict = {key: float(value) for key, value in row.items()}  		# Convert variables to float
 			
 			line_protocols = convert_to_line_protocol(timestamp, data_dict) 	 # Convert to Line Protocol
 			
 			for line_protocol in line_protocols:
-				producer.send(topic, value=line_protocol.encode('utf-8'))  		# Send to Kafka
+				producer.send(topic, value=line_protocol.encode('utf-8'))  	# Send to Kafka
 				producer.flush()
 				print(f"Sent data: {line_protocol}")
 
@@ -83,8 +83,8 @@ labels		   = read_from_file("../dataset/labels.txt")	# Which labels to use
 
 if __name__ == "__main__":
 	bootstrap_servers = "localhost:9093" 				# Kafka broker address
-	topic = "SeaWater" 									# Topic to send sea water multiple sensor data
-	file_path = "../dataset/multivariate_dataset.csv"		# multi-dimenssional time-series dataset
+	topic = "sea_water" 									# Topic to send sea water multiple sensor data
+	file_path = "../dataset/multivariate_dataset.csv"	# multi-dimenssional time-series dataset
 	
 	# Create Kafka producer
 	producer = KafkaProducer(
