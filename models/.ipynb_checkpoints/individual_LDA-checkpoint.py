@@ -24,6 +24,41 @@ To-Do:
 Store actual values (Store whole event?) with predicted values in sliding window 
 
 """
+
+# Setting up the InfluxDB to consume data
+influxdb_url = "http://localhost:8086"
+token = "random_token"
+username = "influx-admin"
+password = "ThisIsNotThePasswordYouAreLookingFor"
+org = "ORG"
+bucket = "system_state"
+measurement = "multivariate_dataset" 
+
+# Instantiate the QueryAPI
+client = InfluxDBClient(url=influxdb_url, token=token, org=org, username=username, password=password)
+write_api = client.write_api(write_options=ASYNCHRONOUS)
+query_api = client.query_api()
+
+# RoLA specific
+T = 0
+
+# Data structures for training and predicting
+batch_events = deque(maxlen=4)					# Events from time points: T-3, T-2, T-1, and T
+next_event = deque(maxlen=1)						# Used in the case of predicting D_T+1
+
+# Sliding window for calculating the Threshold
+actual_value = deque([0] * 3, maxlen=3)			# To append the actual event value in current iteration 
+predicted_value = deque([0] * 3, maxlen=3)		# To append the predicted event value in current iteration 
+sliding_window_AARE = deque(maxlen=8064)			# Tp append the resulting AARE in the current iteration
+
+M = None											# Trained LSTM model 
+flag = True										# True: no anomaly was ditected in the previous iteration
+
+# Time parameters
+poll_interval = 1  								# Second(s)
+time_increment = 1 								# Second(s)
+start_time = "2021-10-28T00:00:00Z" 				# The time of the first event in the time series data
+
 def individual_LDA(T, batch_events, next_event, M, flag, actual_value, predicted_value, sliding_window_AARE):
 	# For printing the values
 	AARE_T = 0
@@ -114,13 +149,13 @@ def individual_LDA(T, batch_events, next_event, M, flag, actual_value, predicted
 			else:
 				# D_T reported as anomaly immediately, and update flag to False
 				flag = False
+				return batch_events, next_event, M, actual_value, predicted_value, sliding_window_AARE, flag
 				#report_anomaly(T, batch_events[-1].get_time(), actual_value[-1], predicted_value[-1], write_api)
-				
-		# Write the results to InfluxDB																							### delete later
-		#write_result(batch_events[-1].get_time(), T, batch_events[-1].get_value(), predicted_value[-1], AARE_T, Thd, write_api) 	### delete later
-		return batch_events, next_event, M, actual_value, predicted_value, sliding_window_AARE, flag
-			
 
+		
+		# Write the results to InfluxDB
+		#write_result(batch_events[-1].get_time(), T, batch_events[-1].get_value(), predicted_value[-1], AARE_T, Thd, write_api) 
+	
 	elif T >= 7 and flag == False:
 		# Train an LSTM model with D_T-3, D_T-2, D_T-1
 		model = train_model([event.get_value() for event in list(batch_events)[0:-1]])
@@ -145,46 +180,13 @@ def individual_LDA(T, batch_events, next_event, M, flag, actual_value, predicted
 		else:
 			# D_T reported as anomaly immediately, and update flag to False
 			flag = False
+			return batch_events, next_event, M, actual_value, predicted_value, sliding_window_AARE, flag
+
 			#report_anomaly(T, batch_events[-1].get_time(), actual_value[-1], predicted_value[-1], write_api)
-		
-		# Write the results to InfluxDB																							### delete later
-		#write_result(batch_events[-1].get_time(), T, batch_events[-1].get_value(), predicted_value[-1], AARE_T, Thd, write_api) 	### delete later
-		return batch_events, next_event, M, actual_value, predicted_value, sliding_window_AARE, flag
-		
-		
-# Setting up the InfluxDB to consume data
-influxdb_url = "http://localhost:8086"
-token = "random_token"
-username = "influx-admin"
-password = "ThisIsNotThePasswordYouAreLookingFor"
-org = "ORG"
-bucket = "system_state"
-measurement = "multivariate_dataset" 
 
-# Instantiate the QueryAPI
-client = InfluxDBClient(url=influxdb_url, token=token, org=org, username=username, password=password)
-write_api = client.write_api(write_options=ASYNCHRONOUS)
-query_api = client.query_api()
-
-# RoLA specific
-T = 0
-
-# Data structures for training and predicting
-batch_events = deque(maxlen=4)					# Events from time points: T-3, T-2, T-1, and T
-next_event = deque(maxlen=1)						# Used in the case of predicting D_T+1
-
-# Sliding window for calculating the Threshold
-actual_value = deque([0] * 3, maxlen=3)			# To append the actual event value in current iteration 
-predicted_value = deque([0] * 3, maxlen=3)		# To append the predicted event value in current iteration 
-sliding_window_AARE = deque(maxlen=8064)			# Tp append the resulting AARE in the current iteration
-
-M = 0											# Trained LSTM model 
-flag = True										# True: no anomaly was ditected in the previous iteration
-
-# Time parameters
-poll_interval = 1  								# Second(s)
-time_increment = 1 								# Second(s)
-start_time = "2021-10-28T00:00:00Z" 				# The time of the first event in the time series data
+	
+		# Write the results to InfluxDB (7.time, 7, 7.value, 
+		#write_result(batch_events[-1].get_time(), T, batch_events[-1].get_value(), predicted_value[-1], AARE_T, Thd, write_api) 
 	
 while True:
 	
@@ -220,6 +222,7 @@ while True:
 	#events = list(query_api.query_stream(org=org, query=query))
 
 
+
 	if len(events) > 1: 						# Need at least 4 to predict next and compare
 
 		for i in range(len(events)):
@@ -227,15 +230,21 @@ while True:
 			if i < 7: 
 				next_event = events[i+1]	 	# used when  0 <= T < 7 to predict the next event. The 7th event is the last one predicted.
 			
-			# Print the default outputs when T=0 and T=1 																				### delete later
-			if i in [0,1]: 																												### delete later
-				write_result(batch_events[-1].get_time(), i, batch_events[-1].get_value(), predicted_value[-1], 0, 0, write_api)	### delete later
-			else:
-				# RePAD2 Algorithm
-				batch_events, next_event, M, actual_value, predicted_value, sliding_window_AARE, flag = individual_LDA(T, batch_events, next_event, M, flag, actual_value, predicted_value, sliding_window_AARE)
-
-				if flag==False:
-					print(T, batch_events[-1].get_time())
+			# Print the default outputs when T=0 and T=1
+			#if i in [0,1]: 
+			#	write_result(batch_events[-1].get_time(), i, batch_events[-1].get_value(), predicted_value[-1], AARE_T, Thd, write_api)
+			
+			# RePAD2 Algorithm
+			(actual_value, 
+			 predicted_value, 
+			 sliding_window_AARE, 
+			 batch_events, 
+			 next_event, 
+			 M, 
+			 flag) = individual_LDA(T, batch_events, next_event, M, flag, actual_value, predicted_value, sliding_window_AARE)
+			
+			if flag==True:
+				print(T, batch_events[-1].get_time())
 			# Increment T
 			T += 1
 
