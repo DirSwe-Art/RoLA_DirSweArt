@@ -202,7 +202,7 @@ state        = {
 			for key in variables 
 			}
 
-
+   
 	
 while True:
 	# Construct the Flux query for the available time points with multiple variables
