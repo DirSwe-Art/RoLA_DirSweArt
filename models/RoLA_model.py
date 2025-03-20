@@ -1,10 +1,12 @@
 ### RoLA Algorithm ###
 
-def is_anomaly(T, vatiable_name, state):
+def is_anomaly(T, variable_name, state):
 	"""
     This function is an LDA-based anomaly detection function that checks if a given
 	data point (variable Vx at time T) is an anomaly. 
 	It updates variable LDA's parameters dynamically.
+	In the multivariate case, each flux event consists of a time stamp and a combination of values.
+	These values are treated as floats or other data types. Thus, get_value() was not used as we did a flux event with an one value. 
 	
 	Parameters:
 	===========
@@ -45,16 +47,18 @@ def is_anomaly(T, vatiable_name, state):
 		
 		# batch_events containes only 3 values when T=2.
 		if T==2: 
-			M = train_model([event.get_value() for event in list(batch_events)])
+			M = train_model([event for event in list(batch_events)])
+			variable_state["M"] = M
 		
 		# Ignore D_T-3 from the batch_events
 		else:
-			M = train_model([event.get_value() for event in list(batch_events)[1:]])		 
+			M = train_model([event for event in list(batch_events)[1:]])
+			variable_state["M"] = M
 		
 		pred_D_T_plus_1 = M.predict_next()
 		
 		# Append the event and its prediction to the sliding window.
-		actual_value.append(next_event.get_value())
+		actual_value.append(next_event)
 		predicted_value.append(pred_D_T_plus_1)
 		
 		# Write the results to InfluxDB.
@@ -69,13 +73,16 @@ def is_anomaly(T, vatiable_name, state):
 		sliding_window_AARE.append(AARE_T)
 		
 		# Train M with (D_T-2, D_T-1, and D_T) to predict D_T+1.
-		M = train_model([event.get_value() for event in list(batch_events)[1:]])
+		M = train_model([event for event in list(batch_events)[1:]])
 		pred_D_T_plus_1 = M.predict_next()
 		
 		# Append the event and its prediction to the sliding window.
-		actual_value.append(next_event.get_value())
+		actual_value.append(next_event)
 		predicted_value.append(pred_D_T_plus_1)
 
+		# Update M for the next iteration. This has no effect with T=6, but is needed in the iteration when T>7
+		variable_state["M"] = M
+		
 		# Write the results to InfluxDB.
 		#write_result(batch_events[-1].get_time(), T, batch_events[-1].get_value(), predicted_value[-2], AARE_T, Thd, write_api) 
 
@@ -89,7 +96,7 @@ def is_anomaly(T, vatiable_name, state):
 			pred_D_T = M.predict_next()
 			
 			# Append the event (last event in batch_events) and its prediction to the sliding window.
-			actual_value.append(batch_events[-1].get_value())
+			actual_value.append(batch_events[-1])
 			predicted_value.append(pred_D_T)
 
 		# Calculate AARE and append to sliding window	
@@ -102,12 +109,12 @@ def is_anomaly(T, vatiable_name, state):
 		if AARE_T <= Thd: pass 		# D_T is not reported as anomaly
 		else:																
 			# Train an LSTM model with D_T-3, D_T-2, D_T-1: list(batch_events)[0:-1]		  
-			model = train_model([event.get_value() for event in list(batch_events)[0:-1]]) 
+			model = train_model([event for event in list(batch_events)[0:-1]]) 
 			# Use the model to predict D_T
 			pred_D_T = model.predict_next()
 			
 			# Append the event (last event in batch_events) and its prediction to the sliding window
-			actual_value.append(batch_events[-1].get_value())
+			actual_value.append(batch_events[-1])
 			predicted_value.append(pred_D_T)
 
 			# Re-calculate AARE_T
@@ -120,7 +127,8 @@ def is_anomaly(T, vatiable_name, state):
 			if AARE_T <= Thd:
 				# D_T is not reported as anomaly
 				# Replace M with the new model
-				M = model
+				#M = model
+				variable_state["M"] = model
 				# Update flag to True
 				flag = True
 			else:
@@ -135,11 +143,11 @@ def is_anomaly(T, vatiable_name, state):
 
 	elif T >= 7 and flag == False:
 		# Train an LSTM model with D_T-3, D_T-2, D_T-1
-		model = train_model([event.get_value() for event in list(batch_events)[0:-1]])
+		model = train_model([event for event in list(batch_events)[0:-1]])
 		# Use the model to predict D_T
 		pred_D_T = model.predict_next()
 		# Append the event and its prediction to the sliding window
-		actual_value.append(batch_events[-1].get_value())
+		actual_value.append(batch_events[-1])
 		predicted_value.append(pred_D_T) 
 
 		# Calculate AARE_T
@@ -151,7 +159,8 @@ def is_anomaly(T, vatiable_name, state):
 		if AARE_T <= Thd:
 			# D_T is not reported as anomaly
 			# Replace M with the new model
-			M = model
+			#M = model
+			variable_state["M"] = model
 			# Update flag to True
 			flag = True
 		else:
@@ -218,13 +227,14 @@ while True:
 
 	
 	if len(events) > 1: 						# Need at least 3 events to predict next.
+		timestamp = 0						# The timestamp of the last processed event.
 		for i in range(len(events)):			# Iterate over each data point.
-			event = events[i]				# The data point expressed by N-dimensional vector at time point T .
+			event = events[i]				# The data point expressed by N-dimensional vector at time point T received by Flux query of readings sent by Kafka1.
 			timestamp = event["_time"]  		# Extract timestamp.
 				
-			# Iterate over each variable excluding "_time"
-			for variable, value in event.items():
-				if variable == "_time": continue
+			# Iterate over each variable. Distribute variables to LDAs
+			for variable, value in event.values.items():
+				if variable in ["result", "table","_start","_stop","_time","_measurement","host"]: continue
 
 				# Send variable's value (at time T) to the variable LDA's "bach_events" argument stored in the state dictionary.
 				state[variable]["batch_events"].append(value)
@@ -236,9 +246,26 @@ while True:
 
 				# Run anomaly detection of the specific variable at time T with updated state.
 				anomaly = is_anomaly(T, variable, state)
-				
+				if anomaly:
+					A.append(variable)
+			
+			if len(A) > 0:
+				for y in range(0,len(A)):
+					C_agree      	= 1
+					C_disagree 	= 0
+					L_var   		= []
+					L_data 		= []
+					a = A[y]			; L_var.append(a)
+					Sa_T = event[a]	; L_data.append(Sa_T)
+					for z in range(len(variables)):
+						if variables[z] not a:
+							b = variables[z]
+							E_ab = 
+					
+					
 				# Print result
-				print(f"Timestamp: {timestamp}, Variable: {variable}, Value: {value}, Anomaly: {anomaly}")
+				#if anomaly:
+					#print(f"T: {T}, Timestamp: {timestamp}, Variable: {variable}, Value: {value}, Anomaly: {anomaly}")
 				
 			
 			
@@ -253,8 +280,10 @@ while True:
 			# Increment T
 			T += 1
 
+		print('timestamp', timestamp)
 		# Update start time for the next iteration
-		last_event_time = batch_events[-1].get_time()
+		last_event_time = timestamp
+		#last_event_time = batch_events[-1].get_time()
 		# Increment by 1 second to avoid duplicate events
 		start_time = (last_event_time + timedelta(seconds=time_increment)).isoformat()
 				
