@@ -9,9 +9,11 @@ def read_from_file(filename):
 	Read from a text file.
 
 	Parameters:
+	===========
 		- filename (str): The path from which the text file is read.
 	
 	Returns:
+	========
 		- list of strings.
 	"""
 	with open(filename, 'r') as file:
@@ -22,6 +24,7 @@ def convert_to_line_protocol(timestamp, data_dict, dataset="multivariate_dataset
 	Convert a timestamp and multiple variables into InfluxDB Line Protocol format.
 
 	Parameters:
+	===========
 		- timestamp (str): The timestamp in "YYYY-MM-DD HH:MM:SS" format.
 		- data_dict (dict): A dictionary containing variable names as keys and their values.
 		- dataset (str): The name of the measurement (default: "sensor_data").
@@ -29,6 +32,7 @@ def convert_to_line_protocol(timestamp, data_dict, dataset="multivariate_dataset
 		- labels (set): A set of timestamps that are considered anomalies.
 
 	Returns:
+	========
 		- list of str: A list of formatted line protocol entries.
 	"""
 	# Convert timestamp to nanoseconds since epoch
@@ -54,6 +58,7 @@ def send_csv_data(producer, topic, file_path):
 	Reads a CSV file with multiple variables per timestamp and sends formatted data to Kafka.
 
 	Parameters:
+	===========
 		- producer: Kafka producer instance.
 		- topic (str): Kafka topic name.
 		- file_path (str): Path to the CSV file.
@@ -82,7 +87,7 @@ labels		   = read_from_file("../dataset/labels.txt")	# Which labels to use
 
 
 if __name__ == "__main__":
-	bootstrap_servers = "localhost:9093" 				# Kafka broker address
+	bootstrap_servers = "localhost:9093" 					# Kafka broker address
 	topic = "sea_water" 									# Topic to send sea water multiple sensor data
 	file_path = "../dataset/multivariate_dataset.csv"	# multi-dimenssional time-series dataset
 	
