@@ -1,27 +1,124 @@
+from LSTM_model import LSTM
+import numpy as np
+import random
+import torch
+import time
+from datetime import timedelta
+from collections import deque
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import ASYNCHRONOUS
+
+
+# Setting random seed for reproducibility
+torch.manual_seed(140)
+np.random.seed(140)
+random.seed(140)
+
+
+# Functions for RePAD2
+# ====================
+def calculate_aare(actual, predicted):
+    """
+    Calculate the Absolute Relative Error (ARE) between an actual and predicted value.
+    
+    Parameters:
+    actual (deque): The actual value.
+    predicted (deque): The predicted value.
+    
+    Returns:
+    float: The Absolute Relative Error.
+    """
+    # Adding a small value epsilon to avoid division by zero
+    #epsilon = 1e-10
+    aare_values = []
+    
+    for act, pred in zip(actual, predicted):
+        AARE = abs(act - pred) / max(abs(act), 1)
+        aare_values.append(AARE)
+
+    mean_aare = np.mean(aare_values)
+
+    return mean_aare
+
+
+def calculate_threshold(aare_values):
+    """
+    Calculate the threshold value (Thd) based on a deque of AARE values.
+    Thd is defined as the mean of the AARE values plus three times their standard deviation.
+
+    Parameters:
+    - aare_values (array-like): An array of AARE values.
+
+    Returns:
+    - float: The calculated threshold value (Thd).
+    """
+    # Calculate the mean and standard deviation of the AARE values
+    mean_aare = np.mean(aare_values)
+    std_aare = np.std(aare_values)
+    
+    # Calculate Thd
+    thd = mean_aare + 3 * std_aare
+    
+    return thd
+
+# Function for creating and training model
+def train_model(train_events):
+    tensor_y = torch.tensor(train_events, dtype=torch.float32).view(-1, 1, 1)
+    tensor_x = torch.tensor([1, 2, 3], dtype=torch.float32).view(-1, 1, 1)
+    # Create an instance of the LSTM model
+    model = LSTM(tensor_x, tensor_y, input_size=1, hidden_size=10, num_layers=1, output_size=1, num_epochs=50, learning_rate=0.005)
+    
+    model.train_model() # Train the model
+
+    return model
+
+# Function for reporting anomalies to InfluxDB
+def report_anomaly(T, timestamp, actual_value, predicted_value, write_api):
+    """
+    Sends an anomalous event back to InfluxDB, storing it in the "anomaly" measurement
+    with both the same value and time as the original event.
+
+    Parameters:
+    - anomalous_event: The event data that was detected as an anomaly, including its value and timestamp.
+    """
+
+    point = Point("base_detection_multivariate_dataset")\
+        .tag("host", "detector")\
+        .field("T", float(T))\
+        .field("actual_value", float(actual_value))\
+        .field("predicted_value", float(predicted_value))\
+        .time(timestamp, WritePrecision.NS)
+    
+    #write_api.write(bucket="anomalies", org="ORG", record=point)
+    #print(f"Anomalous event sent to InfluxDB: Value={actual_value}, Time={timestamp}")
+
+def write_result(timestamp, T, actual_value, predicted_value, AARE, Thd, write_api):
+    """
+    Sends an anomalous event back to InfluxDB, storing it in the "anomaly" measurement
+    with both the same value and time as the original event.
+
+    Parameters:
+    - anomalous_event: The event data that was detected as an anomaly, including its value and timestamp.
+    """
+
+    point = Point("base_result_multivariate_dataset")\
+        .tag("host", "detector")\
+        .field("T", float(T))\
+        .field("actual_value", float(actual_value))\
+        .field("predicted_value", float(predicted_value))\
+        .field("AARE", float(AARE))\
+        .field("Thd", float(Thd))\
+        .time(timestamp, WritePrecision.NS)
+    
+    write_api.write(bucket="anomalies", org="ORG", record=point)
+    print(f'T: {T}, Real Value: {actual_value}, Prediction Value: {predicted_value}, AARE: {AARE}, Thd: {Thd}')
+	
+	
 ### REPAD2 Algorithm ###
 
+
 """
-THE PLAN
-
-Making the program start from any predefined time, and then continue to fetch data from that time and onwards.
-And so it can process older data and then catch up to the present time.
-
-It therefore processes a batch of 3 from the earliest timestamp in the range, and then updates the start time for the next iteration 
-by incrementing the start time by a set time to both avoid duplicate events and to eventually catch up to the present time.
-
-The program will run indefinitely, and will continue to fetch data from the InfluxDB and process it in batches of 3 until the program is stopped.
-I there are not enough events for a batch, the program will wait for a set time before trying again.
-When a batch of three is available it will be processed and the it will again wait for another event to be available.
-
-This way it is both flexible and efficient, and can be easily used to process either data in real-time or historical data
-
-
-For each batch it follows the algorithm of RePAD2
-
-
-To-Do:
-
-Store actual values (Store whole event?) with predicted values in sliding window 
+This is a modified version of the one found on GitHub. Some changes are made and explained by in-line comments.
 
 """
 
@@ -55,7 +152,7 @@ Thd = 0
 # Time parameters
 poll_interval = 1  # Second(s)
 time_increment = 1 # Second(s)
-start_time = "2021-10-28T00:00:00Z" #"2014-04-10T00:04:00Z"
+start_time = "2021-10-28T00:00:00Z" 
 			 
 
 # RePAD2 specific
@@ -99,7 +196,7 @@ while True:
 
 
 
-	if len(events) > 1: 						# Need at least 4 to predict next and compare
+	if len(events) > 1: 						# Need at least 3 to predict next and compare
 
 		for i in range(len(events)):
 			batch_events.append(events[i])
