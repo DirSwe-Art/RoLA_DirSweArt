@@ -20,7 +20,6 @@ InfluxDB Bucket_name
 InfluxDB Token
 ```
 
-'send_multivariate_dataset_to_influxdb' is a Python script that sends the datapoints from the specified csv file. 
-of format 'timestamp', 'value', 'value', 'value', 'value', ....., 'value'  (Check the file multivariate_dataset.csv for reference) to InfluxDB.
+'send_multivariate_dataset_to_influxdb' is a Python script that sends the datapoints from the specified csv file of format 'timestamp', 'value', 'value', 'value', 'value', ....., 'value'  (Check the file multivariate_dataset.csv for reference) to InfluxDB.
 
 
