@@ -15,8 +15,8 @@ To run the code, you need to have the following installed:
 ### Steps to Set Up
 
 1. **Clone the Repository**
-   Clone this repository to your local machine:
-   ```bash
+Clone this repository to your local machine:
+```bash
    git clone https://github.com/yourusername/RoLA.git
    cd roLA
    ```
