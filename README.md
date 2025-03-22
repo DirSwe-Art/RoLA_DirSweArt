@@ -17,25 +17,23 @@ To run the code, you need to have the following installed:
 1. **Clone the Repository**
 Clone this repository to your local machine:
 ```bash
-   git clone https://github.com/yourusername/RoLA.git
-   cd roLA
-   ```
-
+    git clone https://github.com/DirSwe-Art/RoLA_DirSweArt.git
+    cd RoLA_DirSweArt
+```
 2. **Set Up the Environment Create a new Anaconda environment:**
 ```bash
-conda create --name RoLA-env python=3.8
-conda activate RoLA-env
+    conda create --name RoLA-env python=3.8
+    conda activate RoLA-env
 ```
 3. **Install Dependencies Install the required libraries by running:**
 ```bash
-conda install -r requirements.txt
+    conda install -r requirements.txt
 ```
-
 4. **Set Up Kafka and InfluxDB Using Docker Compose** This project uses Docker to set up Kafka and InfluxDB services. To start these services, navigate to the **Kafka-TIG** folder from PowerShell command line and run the following commands:
 ```bash
-wsl -d Ubuntu
-cd ~/Kafka-TIG
-docker-compose -f docker-compose.yml --env-file conf/variables.env up -d
+    wsl -d Ubuntu
+    cd ~/Kafka-TIG
+    docker-compose -f docker-compose.yml --env-file conf/variables.env up -d
 ```
 This will spin up the services needed for real-time data distribution and storage.
 
@@ -44,7 +42,7 @@ This will spin up the services needed for real-time data distribution and storag
 
 7. **Shutdows Kafka** Once you finish testing the algorithm, you can shut down Kafka services by executing the following command in the PowerShell window.
 ```bash
-docker-compose -f docker-compose.yml --env-file conf/variables.env down
+    docker-compose -f docker-compose.yml --env-file conf/variables.env down
 ```
 
 Screenshots can be found in the **Kafka** folder.
