@@ -45,4 +45,4 @@ Clone this repository to your local machine:
     docker-compose -f docker-compose.yml --env-file conf/variables.env down
 ```
 
-*  Note: The "send_multivariate_dataset_to_influxdb" is a Python script that sends the data points from the specified CSV file of format 'timestamp', 'value', 'value', 'value', 'value', ....., 'value'  (Check the file multivariate_dataset.csv for reference) to InfluxDB. Screenshots can be found in the **Kafka** folder.
+*  Note: The "send_multivariate_dataset_to_influxdb.py" is a Python script that sends the data points from the specified CSV file of format 'timestamp', 'value', 'value', 'value', 'value', ....., 'value'  (Check the file multivariate_dataset.csv for reference) to InfluxDB. Screenshots can be found in the **Kafka** folder.
