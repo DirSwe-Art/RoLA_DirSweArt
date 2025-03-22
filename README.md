@@ -4,6 +4,17 @@
 This repository contains an implementation of the **RoLA** (Real-time Online Learning Algorithm) for anomaly detection in multivariate time-series sensor data. The implementation follows the methodology described in the RoLA research paper (https://arxiv.org/pdf/2305.16509) and uses **Kafka** for distributing the data and **InfluxDB** for storing the multivariate time series data.
 The algorithm detects anomalies based on local dynamic adaptation (LDA) and correlation-based polling to refine anomaly detection results.
 
+This repository contains all code used in the implementation, including:
+- Models (RePAD2_modified, RoLA, and LSTM).
+- Dataset (multivariate) with labels.
+- Docker-infrastructure.
+- Scripts for:
+    - Sending of data to InfluxDB.
+    - Method for evaluating the models.
+
+**Important:**
+This implementation is under continuous improvement with the aim of optimizing the RoLA algorithm for better lightweight and efficiency. 
+
 ## Prerequisites
 To run the code, you need to have the following installed:
 
