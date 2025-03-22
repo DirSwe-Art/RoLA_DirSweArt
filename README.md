@@ -35,7 +35,7 @@ Clone this repository to your local machine:
     cd ~/Kafka-TIG
     docker-compose -f docker-compose.yml --env-file conf/variables.env up -d
 ```
-This will spin up the services needed for real-time data distribution and storage.
+   This will spin up the services needed for real-time data distribution and storage.
 
 5. **Send data to InfluxDB** Once the services are up and running, open **Anaconda** command line, navigate to the **scripts** folder, and execute the **send_multivariate_dataset_to_influxdb.py**
 6. **Run the RoLA Algorithm** Open another **Anaconda** command line, navigate to **models** folder, and execute the **RoLA_model.py** or you can open **RoLA_model.ipynb** from **Jupiter Notebook**.
@@ -45,4 +45,4 @@ This will spin up the services needed for real-time data distribution and storag
     docker-compose -f docker-compose.yml --env-file conf/variables.env down
 ```
 
-Screenshots can be found in the **Kafka** folder.
+*  Note: The "send_multivariate_dataset_to_influxdb" is a Python script that sends the data points from the specified CSV file of format 'timestamp', 'value', 'value', 'value', 'value', ....., 'value'  (Check the file multivariate_dataset.csv for reference) to InfluxDB. Screenshots can be found in the **Kafka** folder.
