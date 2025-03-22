@@ -17,8 +17,8 @@ To run the code, you need to have the following installed:
 1. **Clone the Repository**
 Clone this repository to your local machine:
 ```bash
-git clone https://github.com/yourusername/RoLA.git
-cd roLA
+git clone [https://github.com/DirSwe-Art/RoLA_DirSweArt.git]
+cd RoLA_DirSweArt
 ```
 2. **Set Up the Environment Create a new Anaconda environment:**
 ```bash
